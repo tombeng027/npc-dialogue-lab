@@ -1,0 +1,1879 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173c32">
+  <title>NPC Dialogue Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1c2925;
+      --muted: #66756e;
+      --line: #d9e1da;
+      --paper: #f0f4ef;
+      --surface: #ffffff;
+      --pine: #205643;
+      --pine-dark: #173c32;
+      --mint: #e5f2e9;
+      --copper: #b95737;
+      --copper-pale: #fff0e9;
+      --gold: #d49a40;
+      --danger: #aa3c32;
+      --shadow: 0 14px 36px rgba(21, 49, 38, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background-color: var(--paper);
+      background-image: repeating-linear-gradient(135deg, transparent 0 17px, rgba(32, 86, 67, 0.025) 17px 18px);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell { width: min(1440px, 100% - 48px); margin: 0 auto; }
+
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 92px;
+      border-bottom: 1px solid rgba(28, 41, 37, 0.14);
+    }
+
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      aspect-ratio: 1;
+      place-items: center;
+      color: #fff;
+      background: var(--pine-dark);
+      border-radius: 7px;
+      font: 700 20px Georgia, serif;
+    }
+    .eyebrow, .step, .field-label, .message-label, .section-kicker {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .brand-name { margin: 2px 0 0; font: 700 21px Georgia, serif; }
+    .runtime {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      color: var(--pine-dark);
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .runtime-dot { width: 8px; height: 8px; background: #43895c; border-radius: 50%; }
+
+    .intro { padding: 27px 0 23px; }
+    .intro h1 { margin: 5px 0 0; font: 700 34px/1.12 Georgia, serif; letter-spacing: 0; }
+    .intro p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+    .workbench-tabs { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--line); }
+    .workbench-tab { min-height: 42px; padding: 0 15px; color: var(--muted); background: transparent; border: 0; border-bottom: 3px solid transparent; font-size: 13px; font-weight: 750; }
+    .workbench-tab:hover { color: var(--ink); }
+    .workbench-tab[aria-selected="true"] { color: var(--pine-dark); border-bottom-color: var(--pine); }
+    .workspace[hidden], .world-workspace[hidden] { display: none; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.86fr) minmax(290px, 0.9fr) minmax(0, 1.7fr);
+      align-items: start;
+      gap: 20px;
+      padding-bottom: 40px;
+    }
+
+    .pane {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      box-shadow: var(--shadow);
+    }
+    .npc-list-pane { border-top: 4px solid var(--gold); }
+    .create-pane { border-top: 4px solid var(--pine); }
+    .chat-pane { border-top: 4px solid var(--copper); }
+    .pane-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .step { color: var(--copper); }
+    .create-pane .step { color: var(--pine); }
+    .pane-head h2 { margin: 5px 0 0; font: 700 23px Georgia, serif; letter-spacing: 0; }
+    .pane-head p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .form-body { display: grid; gap: 14px; padding: 18px 22px 22px; }
+    .roster-body { padding: 12px; }
+    .npc-list { display: grid; max-height: 470px; gap: 7px; overflow-y: auto; }
+    .npc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: stretch; gap: 5px; }
+    .npc-select {
+      display: grid;
+      min-width: 0;
+      align-content: center;
+      gap: 3px;
+      padding: 10px;
+      color: var(--ink);
+      text-align: left;
+      background: #f8faf7;
+      border: 1px solid transparent;
+      border-radius: 4px;
+    }
+    .npc-select:hover, .npc-select[aria-pressed="true"] { background: var(--mint); border-color: #b9d4c0; }
+    .npc-select strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    .npc-select small { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .npc-select[aria-pressed="true"] small { color: var(--pine-dark); font-weight: 700; }
+    .npc-delete { padding: 0 8px; color: #87412b; background: #fff; border: 1px solid #ecd7cc; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .npc-delete:hover { color: #fff; background: var(--danger); border-color: var(--danger); }
+    .npc-edit { align-self: stretch; }
+    .roster-empty { padding: 15px 10px; color: var(--muted); background: #f8faf7; border-radius: 4px; font-size: 12px; line-height: 1.5; }
+    .world-workspace { display: grid; grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.5fr); align-items: start; gap: 18px; padding-bottom: 40px; }
+    .world-map-pane { border-top: 4px solid var(--gold); }
+    .world-detail-pane { border-top: 4px solid var(--pine); }
+    .inventory-pane { grid-column: 1 / -1; border-top: 4px solid var(--copper); }
+    .world-map-body, .world-detail-body, .inventory-body { padding: 16px 18px 19px; }
+    .map-caption { margin: 0 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .map-nodes { display: grid; gap: 8px; margin-bottom: 18px; }
+    .map-node {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      min-height: 62px;
+      padding: 8px 10px;
+      color: var(--ink);
+      text-align: left;
+      background: #f8faf7;
+      border: 1px solid transparent;
+      border-radius: 4px;
+    }
+    .map-node:hover, .map-node[aria-pressed="true"] { background: var(--mint); border-color: #b9d4c0; }
+    .map-node-icon { display: grid; width: 30px; aspect-ratio: 1; place-items: center; color: var(--pine-dark); background: #e0eae0; border-radius: 50%; font-size: 16px; }
+    .map-node strong { display: block; overflow: hidden; font: 700 13px Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+    .map-node small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .map-node-index { color: #77877d; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .compact-form { display: grid; gap: 11px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .compact-form h3 { margin: 0; font: 700 17px Georgia, serif; }
+    .compact-form .field-grid { gap: 9px; }
+    .compact-form input, .compact-form select { height: 37px; font-size: 12px; }
+    .compact-form textarea { min-height: 58px; font-size: 12px; }
+    .compact-form .primary-button { min-height: 39px; }
+    .location-hero { display: grid; grid-template-columns: minmax(150px, 0.72fr) minmax(0, 1.3fr); gap: 17px; align-items: center; }
+    .location-thumbnail { display: grid; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; place-items: center; color: #fff; background-color: #597761; background-image: repeating-linear-gradient(145deg, transparent 0 12px, rgba(255,255,255,.1) 12px 13px); border-radius: 4px; }
+    .location-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+    .location-thumbnail span { font-size: 32px; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    .location-title { margin: 0; font: 700 25px Georgia, serif; overflow-wrap: anywhere; }
+    .location-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+    .edit-button { min-height: 30px; padding: 0 9px; color: var(--pine-dark); background: #fff; border: 1px solid var(--line); border-radius: 4px; font-size: 10px; font-weight: 750; }
+    .edit-button:hover { background: var(--mint); border-color: #b9d4c0; }
+    .location-description { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .location-id { display: inline-block; margin-top: 9px; color: #738078; font-size: 10px; }
+    .world-section-heading { margin: 20px 0 9px; font: 700 17px Georgia, serif; }
+    .world-actions { display: grid; gap: 8px; }
+    .world-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
+    .world-action h4 { margin: 0; font-size: 13px; }
+    .world-action p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .world-action-meta { margin-top: 6px; color: #53635b; font-size: 10px; }
+    .world-action .primary-button { min-height: 36px; padding: 0 11px; font-size: 11px; }
+    .world-action-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .world-action-editor { grid-column: 1 / -1; }
+    .location-editor { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .mode-label { display: inline-block; margin-bottom: 5px; color: #806123; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .add-action-details { margin-top: 18px; border-top: 1px solid var(--line); }
+    .add-action-details summary { padding: 12px 0 4px; color: var(--pine-dark); cursor: pointer; font-size: 12px; font-weight: 750; }
+    .add-action-details .compact-form { padding-top: 11px; border-top: 0; }
+    .inventory-topline { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .inventory-topline p { margin: 0; color: var(--muted); font-size: 11px; }
+    .wallet-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding: 12px 14px; background: #fff8e9; border: 1px solid #eadbb9; border-left: 4px solid var(--gold); border-radius: 4px; }
+    .wallet-label { display: flex; align-items: center; gap: 10px; color: #66501f; font-size: 12px; font-weight: 750; }
+    .wallet-mark { display: grid; width: 31px; aspect-ratio: 1; place-items: center; color: #fff; background: #a77828; border-radius: 50%; font-size: 17px; font-weight: 800; }
+    .wallet-balance { color: #493716; font: 700 18px Georgia, serif; font-variant-numeric: tabular-nums; }
+    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 14px; }
+    .inventory-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: #f8faf7; border-left: 3px solid var(--copper); }
+    .inventory-item strong { font-size: 12px; }
+    .inventory-item span { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .inventory-empty { grid-column: 1 / -1; padding: 13px; color: var(--muted); background: #f8faf7; font-size: 12px; }
+    .inventory-grant { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 95px auto; align-items: end; gap: 9px; padding-top: 13px; border-top: 1px solid var(--line); }
+    .inventory-grant input { height: 38px; font-size: 12px; }
+    .world-notice { min-height: 18px; margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+    .troubleshooting { margin: 0 0 34px; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid #91a098; border-radius: 7px; box-shadow: var(--shadow); }
+    .troubleshooting[data-state="error"] { border-top-color: var(--danger); }
+    .troubleshooting[data-state="success"] { border-top-color: var(--pine); }
+    .troubleshooting-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px 10px; }
+    .troubleshooting-title-wrap { display: flex; align-items: center; gap: 10px; }
+    .troubleshooting-mark { display: grid; width: 27px; aspect-ratio: 1; place-items: center; color: #fff; background: #74847a; border-radius: 50%; font-size: 14px; font-weight: 800; }
+    .troubleshooting[data-state="error"] .troubleshooting-mark { background: var(--danger); }
+    .troubleshooting[data-state="success"] .troubleshooting-mark { background: var(--pine); }
+    .troubleshooting h2 { margin: 0; font: 700 17px Georgia, serif; }
+    .troubleshooting-code { color: var(--muted); font-size: 10px; }
+    .diagnostic-clear { min-height: 32px; padding: 0 10px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .diagnostic-clear:hover { color: var(--ink); background: #f5f7f4; }
+    .troubleshooting-body { padding: 0 18px 16px 55px; }
+    .diagnostic-message { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.5; }
+    .diagnostic-source { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .diagnostic-suggestions { display: grid; gap: 5px; margin: 10px 0 0; padding-left: 17px; color: #46584e; font-size: 12px; line-height: 1.5; }
+    .diagnostic-suggestions:empty { display: none; }
+    .diagnostic-idle { margin: 0; color: var(--muted); font-size: 12px; }
+    .npc-viewer { margin-top: 14px; padding: 14px 2px 2px; border-top: 1px solid var(--line); }
+    .viewer-kicker { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+    .viewer-name { margin: 4px 0 10px; font: 700 19px Georgia, serif; overflow-wrap: anywhere; }
+    .viewer-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; margin: 0; }
+    .viewer-fact { min-width: 0; }
+    .viewer-fact.wide { grid-column: 1 / -1; }
+    .viewer-fact dt { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+    .viewer-fact dd { margin: 3px 0 0; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .viewer-subsection { margin-top: 13px; padding-top: 11px; border-top: 1px solid #e8ede8; }
+    .viewer-subsection h4 { margin: 0 0 7px; color: #53635b; font-size: 10px; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+    .viewer-quest-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .viewer-quest-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; overflow-wrap: anywhere; }
+    .viewer-quest-list li span:first-child { min-width: 0; }
+    .quest-state { flex: none; color: var(--muted); font-size: 9px; font-weight: 750; text-transform: uppercase; }
+    .quest-state.triggered { color: #88452f; }
+    .viewer-empty { color: var(--muted); font-size: 11px; font-style: italic; }
+    .guide-workspace { display: block; padding-bottom: 40px; }
+    .guide-pane { border-top: 4px solid var(--gold); }
+    .guide-body { padding: 4px 22px 24px; }
+    .guide-lead { max-width: 850px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .guide-section { display: grid; grid-template-columns: minmax(150px, 0.45fr) minmax(0, 1.55fr); gap: 20px; padding: 17px 0; border-top: 1px solid var(--line); }
+    .guide-section h3 { margin: 0; font: 700 17px Georgia, serif; }
+    .guide-section p { margin: 0 0 8px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .guide-section ul, .guide-section ol { display: grid; gap: 6px; margin: 7px 0 0; padding-left: 19px; color: var(--ink); font-size: 12px; line-height: 1.55; }
+    .guide-code { display: block; margin: 8px 0; padding: 10px 12px; overflow-wrap: anywhere; color: #224436; background: #f0f5f0; border-left: 3px solid var(--pine); font: 12px/1.55 Consolas, monospace; white-space: pre-wrap; }
+    .guide-note { margin-top: 10px; padding: 10px 12px; color: #654b1d; background: #fff8e9; border-left: 3px solid var(--gold); font-size: 12px; line-height: 1.5; }
+    .quest-plan { margin-top: 9px; padding: 9px; background: #f8faf7; border-left: 2px solid var(--gold); }
+    .quest-plan-title { margin: 0 0 7px; color: var(--ink); font-size: 11px; font-weight: 750; overflow-wrap: anywhere; }
+    .quest-steps { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .quest-step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; font-size: 11px; line-height: 1.4; }
+    .quest-step-number { color: var(--pine); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .quest-step strong { display: block; font-size: 11px; }
+    .quest-step-description { display: block; margin-top: 2px; color: var(--muted); }
+    .quest-step-pending { display: block; margin-top: 3px; color: #806123; font-size: 9px; font-weight: 750; text-transform: uppercase; }
+    .quest-step-world { display: block; margin-top: 3px; color: var(--pine); font-size: 9px; overflow-wrap: anywhere; }
+    .location-editor[hidden], .action-reward[hidden], .action-consumes[hidden] { display: none; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: grid; min-width: 0; gap: 6px; }
+    .field-label { color: #53635b; letter-spacing: 0.04em; }
+    input, select, textarea {
+      width: 100%;
+      min-width: 0;
+      color: var(--ink);
+      background: #fbfcfa;
+      border: 1px solid #cdd8cf;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+    input, select { height: 40px; padding: 0 11px; }
+    textarea { min-height: 66px; padding: 9px 11px; resize: vertical; line-height: 1.45; }
+    input:focus, select:focus, textarea:focus { background: #fff; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(32, 86, 67, 0.11); }
+    input::placeholder, textarea::placeholder { color: #98a49c; }
+
+    .primary-button, .send-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 43px;
+      padding: 0 16px;
+      color: #fff;
+      background: var(--pine);
+      border: 1px solid var(--pine);
+      border-radius: 4px;
+      font-weight: 750;
+      transition: background 140ms ease, transform 140ms ease;
+    }
+    .primary-button:hover, .send-button:hover { background: var(--pine-dark); transform: translateY(-1px); }
+    .primary-button:disabled, .send-button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+    .button-arrow { font-size: 19px; line-height: 0.8; }
+    .notice { min-height: 17px; margin: 0; color: var(--muted); font-size: 12px; }
+    .notice[data-kind="error"] { color: var(--danger); }
+    .notice[data-kind="success"] { color: var(--pine); }
+
+    .chat-head { align-items: center; }
+    .npc-tag {
+      max-width: 45%;
+      overflow: hidden;
+      padding: 7px 10px;
+      color: #87412b;
+      background: var(--copper-pale);
+      border: 1px solid #f0d4c6;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chat-badges { display: grid; min-width: 148px; gap: 8px; justify-items: end; }
+    .relationship-meter { display: grid; width: 100%; gap: 5px; }
+    .relationship-caption { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; }
+    .relationship-caption strong { color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .relationship-track { height: 6px; overflow: hidden; background: #e7ebe6; border-radius: 8px; }
+    .relationship-fill { display: block; width: 50%; height: 100%; background: var(--pine); border-radius: inherit; transition: width 220ms ease, background 220ms ease; }
+    .relationship-fill[data-tone="low"] { background: var(--danger); }
+    .relationship-fill[data-tone="high"] { background: #39805b; }
+    .context-block { padding: 15px 20px 14px; background: #f8faf7; border-bottom: 1px solid var(--line); }
+    .context-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+    .context-title strong { font-size: 12px; }
+    .context-title span { color: var(--muted); font-size: 11px; }
+    .context-grid { display: grid; grid-template-columns: 0.8fr 1.5fr 0.9fr 1fr; gap: 10px; }
+    .context-grid input { height: 36px; padding: 0 9px; font-size: 12px; }
+    .context-grid .field { gap: 5px; }
+    .context-grid .field-label { font-size: 9px; }
+
+    .transcript {
+      display: flex;
+      min-height: 330px;
+      max-height: min(47vh, 520px);
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      padding: 20px;
+      background: linear-gradient(180deg, #fff 0%, #fbfcfa 100%);
+      scroll-behavior: smooth;
+    }
+    .empty-state {
+      display: grid;
+      min-height: 275px;
+      align-content: center;
+      justify-items: center;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-mark { display: grid; width: 47px; aspect-ratio: 1; place-items: center; margin-bottom: 11px; color: var(--copper); background: var(--copper-pale); border-radius: 50%; font: 700 21px Georgia, serif; }
+    .empty-state strong { color: var(--ink); font: 700 17px Georgia, serif; }
+    .empty-state span { max-width: 270px; margin-top: 6px; font-size: 12px; line-height: 1.5; }
+    .message { display: grid; max-width: min(82%, 620px); gap: 5px; animation: rise-in 180ms ease-out both; }
+    .message.player { align-self: flex-end; justify-items: end; }
+    .message.npc { align-self: flex-start; }
+    .message-label { font-size: 9px; }
+    .message-bubble { padding: 11px 14px; background: #edf4ef; border: 1px solid #dbe8de; border-radius: 3px 12px 12px 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .message.player .message-bubble { color: #fff; background: var(--pine); border-color: var(--pine); border-radius: 12px 3px 12px 12px; }
+    .message-meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 10px; }
+    .emotion { color: #88452f; font-weight: 750; text-transform: capitalize; }
+    .quest-event { padding: 8px 10px; color: #744e13; background: #fff7e5; border-left: 3px solid var(--gold); font-size: 11px; }
+    .chat-status { min-height: 18px; padding: 0 20px 9px; color: var(--muted); font-size: 11px; }
+    .chat-status[data-kind="error"] { color: var(--danger); }
+
+    .composer { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; padding: 12px 20px 18px; border-top: 1px solid var(--line); }
+    .composer textarea { min-height: 47px; max-height: 130px; resize: vertical; }
+    .send-button { min-width: 92px; background: var(--copper); border-color: var(--copper); }
+    .send-button:hover { background: #984329; }
+    .send-button:disabled { cursor: not-allowed; }
+    .locked .context-block, .locked .composer { opacity: 0.55; }
+
+    @keyframes rise-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr); gap: 14px; }
+      .chat-pane { grid-column: 1 / -1; }
+      .context-grid { grid-template-columns: 1fr 1fr; }
+      .transcript { min-height: 300px; }
+      .world-workspace { grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr); gap: 14px; }
+    }
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 28px, 560px); }
+      .masthead { min-height: 75px; }
+      .brand-name { font-size: 18px; }
+      .runtime { padding: 8px; font-size: 10px; }
+      .intro { padding: 22px 0 18px; }
+      .intro h1 { font-size: 29px; }
+      .workspace { grid-template-columns: 1fr; gap: 15px; }
+      .chat-pane { grid-column: auto; }
+      .world-workspace { grid-template-columns: 1fr; gap: 15px; }
+      .inventory-pane { grid-column: auto; }
+      .pane-head, .form-body { padding-right: 16px; padding-left: 16px; }
+      .context-block { padding-right: 15px; padding-left: 15px; }
+      .transcript { min-height: 290px; max-height: 48vh; padding: 15px; }
+      .composer { padding-right: 14px; padding-left: 14px; }
+      .location-hero { grid-template-columns: 1fr; }
+      .location-thumbnail { max-height: 200px; }
+      .inventory-grant { grid-template-columns: 1fr 1fr; }
+      .inventory-grant .primary-button { grid-column: 1 / -1; }
+      .troubleshooting-head { align-items: flex-start; padding: 13px 13px 9px; }
+      .troubleshooting-body { padding: 0 13px 14px; }
+      .troubleshooting-title-wrap { align-items: flex-start; }
+      .guide-body { padding-right: 16px; padding-left: 16px; }
+      .guide-section { grid-template-columns: 1fr; gap: 6px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">N</div>
+        <div>
+          <div class="eyebrow">Character systems / prototype</div>
+          <div class="brand-name">NPC Dialogue Lab</div>
+        </div>
+      </div>
+      <div class="runtime"><span class="runtime-dot" aria-hidden="true"></span>Local dialogue runtime</div>
+    </header>
+
+    <section class="intro" aria-labelledby="page-title">
+      <div class="section-kicker">NPC manager / 01</div>
+      <h1 id="page-title">Build a world. Give its characters a voice.</h1>
+      <p>Set up locations and player actions, then test how NPCs respond to what happens there.</p>
+    </section>
+
+    <nav class="workbench-tabs" role="tablist" aria-label="Workbench sections">
+      <button id="npc-tab" class="workbench-tab" type="button" role="tab" aria-selected="true" aria-controls="npc-workspace">NPC Studio</button>
+      <button id="world-tab" class="workbench-tab" type="button" role="tab" aria-selected="false" aria-controls="world-workspace">World &amp; Inventory</button>
+      <button id="guide-tab" class="workbench-tab" type="button" role="tab" aria-selected="false" aria-controls="guide-workspace">Quest Guide</button>
+    </nav>
+
+    <main id="npc-workspace" class="workspace" role="tabpanel" aria-labelledby="npc-tab">
+      <section class="pane npc-list-pane" aria-labelledby="npc-list-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">01 / Roster</div>
+            <h2 id="npc-list-title">Existing NPCs</h2>
+            <p>Select a character to reopen its recent conversation.</p>
+          </div>
+        </div>
+        <div class="roster-body">
+          <div id="npc-list" class="npc-list" role="list" aria-label="Existing NPCs"></div>
+          <p id="npc-list-status" class="notice" role="status" aria-live="polite">Loading NPCs...</p>
+          <section id="npc-viewer" class="npc-viewer" aria-labelledby="viewer-name">
+            <div class="viewer-kicker">Selected character / viewer</div>
+            <h3 id="viewer-name" class="viewer-name">Choose an NPC</h3>
+            <div id="viewer-content" class="viewer-empty">Select a character from the roster to inspect its profile and quests.</div>
+          </section>
+        </div>
+      </section>
+
+      <section class="pane create-pane" aria-labelledby="create-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">02 / Character setup</div>
+            <h2 id="create-title">Create NPC</h2>
+            <p>Set the traits that shape how this character speaks.</p>
+          </div>
+        </div>
+        <form id="create-form" class="form-body">
+          <div class="field-grid">
+            <label class="field"><span class="field-label">Name</span><input name="name" required maxlength="80" placeholder="Mara Venn"></label>
+            <label class="field"><span class="field-label">Age</span><input name="age" type="number" min="0" max="500" required value="35"></label>
+          </div>
+          <div class="field-grid">
+            <label class="field"><span class="field-label">Gender</span><input name="gender" required maxlength="80" placeholder="Optional description"></label>
+            <label class="field"><span class="field-label">Job</span><input name="job" required maxlength="100" placeholder="Cartographer"></label>
+          </div>
+          <label class="field"><span class="field-label">Attitude</span><textarea name="attitude" required maxlength="500" placeholder="Dry-witted, observant, slow to trust"></textarea></label>
+          <label class="field"><span class="field-label">Likes</span><input name="likes" placeholder="Old maps, rain, strong tea"></label>
+          <label class="field"><span class="field-label">Dislikes</span><input name="dislikes" placeholder="Loud crowds, rushed decisions"></label>
+          <label class="field"><span class="field-label">Quest lines</span><input name="quest_lines" placeholder="map_the_ruins, find_the_missing_scout"></label>
+          <label class="field"><span class="field-label">Quest requirements guidance</span><textarea name="quest_guidance" placeholder="quest_id: key items and actions the generated steps must include"></textarea></label>
+          <label class="field"><span class="field-label">Quest coin rewards</span><textarea name="quest_rewards" placeholder="quest_id: coins awarded on completion"></textarea></label>
+          <label class="field"><span class="field-label">Backstory</span><textarea name="backstory" maxlength="2000" placeholder="A few details that give the character history..."></textarea></label>
+          <div class="world-action-controls">
+            <button id="create-button" class="primary-button" type="submit">Create NPC <span class="button-arrow" aria-hidden="true">&rarr;</span></button>
+            <button id="cancel-edit-button" class="edit-button" type="button" hidden>Cancel edit</button>
+          </div>
+          <p id="create-notice" class="notice" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="chat-pane" class="pane chat-pane locked" aria-labelledby="chat-title">
+        <div class="pane-head chat-head">
+          <div>
+            <div class="step">03 / Conversation</div>
+            <h2 id="chat-title">Dialogue test</h2>
+            <p id="chat-subtitle">Create an NPC to open a conversation.</p>
+          </div>
+          <div class="chat-badges">
+            <div id="npc-tag" class="npc-tag" hidden></div>
+            <div class="relationship-meter">
+              <div class="relationship-caption"><span>Relationship</span><strong id="relationship-value">50 / 100</strong></div>
+              <div id="relationship-track" class="relationship-track" role="meter" aria-label="NPC relationship score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+                <span id="relationship-fill" class="relationship-fill"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="context-block">
+          <div class="context-title"><strong>Game context</strong><span>Applied to the next reply</span></div>
+          <div class="context-grid">
+            <label class="field"><span class="field-label">Location</span><input id="context-location" value="Town square" placeholder="Location"></label>
+            <label class="field"><span class="field-label">Current event</span><input id="context-event" value="A quiet afternoon" placeholder="What is happening now?"></label>
+            <label class="field"><span class="field-label">Relationship</span><input id="context-relationship" value="Stranger" placeholder="Stranger"></label>
+            <label class="field"><span class="field-label">Active quest step</span><input id="context-quest" placeholder="Optional quest step"></label>
+          </div>
+        </div>
+
+        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text">
+          <div class="empty-state">
+            <div class="empty-mark" aria-hidden="true">...</div>
+            <strong>No conversation yet</strong>
+            <span>Create an NPC, then send a line to see how they respond in this context.</span>
+          </div>
+        </div>
+        <div id="chat-status" class="chat-status" role="status" aria-live="polite"></div>
+        <form id="chat-form" class="composer">
+          <label class="field" for="player-input"><span class="field-label">Player line</span><textarea id="player-input" placeholder="Say something to the NPC..." maxlength="2000" disabled required></textarea></label>
+          <button id="send-button" class="send-button" type="submit" disabled>Send <span class="button-arrow" aria-hidden="true">&rarr;</span></button>
+        </form>
+      </section>
+    </main>
+
+    <main id="world-workspace" class="world-workspace" role="tabpanel" aria-labelledby="world-tab" hidden>
+      <section class="pane world-map-pane" aria-labelledby="world-map-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">01 / Text map</div>
+            <h2 id="world-map-title">World map</h2>
+            <p>Choose a place to inspect its thumbnail and actions.</p>
+          </div>
+        </div>
+        <div class="world-map-body">
+          <p class="map-caption">Locations are selectable map nodes. Add new places and actions as the world grows.</p>
+          <div id="map-nodes" class="map-nodes" role="list" aria-label="World locations"></div>
+          <form id="location-form" class="compact-form">
+            <h3>Add location</h3>
+            <label class="field"><span class="field-label">Location name</span><input name="name" required maxlength="100" placeholder="Crystal Cavern"></label>
+            <label class="field"><span class="field-label">Description</span><textarea name="description" required maxlength="500" placeholder="A flooded cave below the western ridge..."></textarea></label>
+            <label class="field"><span class="field-label">Thumbnail image URL</span><input name="thumbnail_url" type="url" placeholder="https://... (optional)"></label>
+            <button class="primary-button" type="submit">Add location <span class="button-arrow" aria-hidden="true">&rarr;</span></button>
+            <p id="location-notice" class="notice" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="pane world-detail-pane" aria-labelledby="location-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">02 / Location viewer</div>
+            <h2 id="location-title">Select a location</h2>
+            <p>World interactions here can fulfill quest objectives.</p>
+          </div>
+        </div>
+        <div id="location-detail" class="world-detail-body">
+          <div class="viewer-empty">Select a map node to view its description and actions.</div>
+        </div>
+      </section>
+
+      <section class="pane inventory-pane" aria-labelledby="inventory-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">03 / Player state</div>
+            <h2 id="inventory-title">Inventory</h2>
+            <p>Gather items at locations or submit items collected through game actions.</p>
+          </div>
+        </div>
+        <div class="inventory-body">
+          <div class="wallet-strip" aria-label="Player wallet">
+            <div class="wallet-label"><span class="wallet-mark" aria-hidden="true">$</span><span>Money bag</span></div>
+            <strong id="wallet-balance" class="wallet-balance">0 coins</strong>
+          </div>
+          <div id="inventory-grid" class="inventory-grid" role="list" aria-label="Player inventory"></div>
+          <form id="inventory-form" class="inventory-grant">
+            <label class="field"><span class="field-label">Item ID</span><input name="item_id" required maxlength="100" placeholder="heatproof_stone"></label>
+            <label class="field"><span class="field-label">Display name</span><input name="item_name" required maxlength="100" placeholder="Heatproof stone"></label>
+            <label class="field"><span class="field-label">Quantity</span><input name="quantity" type="number" min="1" max="999" value="1" required></label>
+            <button class="primary-button" type="submit">Add collected item</button>
+          </form>
+          <p id="inventory-notice" class="world-notice" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <main id="guide-workspace" class="guide-workspace" role="tabpanel" aria-labelledby="guide-tab" hidden>
+      <section class="pane guide-pane" aria-labelledby="guide-title">
+        <div class="pane-head">
+          <div>
+            <div class="step">Reference / Quest authoring</div>
+            <h2 id="guide-title">Make quests completable</h2>
+            <p>Connect NPC quest lines to real locations, actions, inventory items, and rewards.</p>
+          </div>
+        </div>
+        <div class="guide-body">
+          <p class="guide-lead">The quest generator uses the NPC's quest line and guidance together with your world action catalog. It will only create requirements that correspond to configured actions and items.</p>
+
+          <section class="guide-section">
+            <h3>1. Add a quest line</h3>
+            <div>
+              <p>In NPC Studio, give each quest a unique, stable ID. Use that same ID in guidance and rewards.</p>
+              <code class="guide-code">fix_the_furnace, retrieve_mithril_ore</code>
+            </div>
+          </section>
+
+          <section class="guide-section">
+            <h3>2. Describe intent</h3>
+            <div>
+              <p>Quest requirements guidance uses one <code>quest_id: instruction</code> per line. Name the intended items, their order, and the final action.</p>
+              <code class="guide-code">fix_the_furnace: Collect heatproof stones, recover Grom's hammer, then use both to repair the furnace.</code>
+              <p>Guidance steers generation; the world map remains authoritative. Every named item and action must exist in World &amp; Inventory.</p>
+            </div>
+          </section>
+
+          <section class="guide-section">
+            <h3>3. Build the world path</h3>
+            <div>
+              <p>For each needed resource, create a <strong>Gather an item</strong> action with a stable item ID. Create a <strong>Use items / perform task</strong> action for the final objective and configure exactly what it consumes.</p>
+              <code class="guide-code">Deepstone Mine / gather_heatproof_stones -> heatproof_stone x3
+Old Watchtower / recover_grom_hammer -> grom_hammer x1
+Ironforge Smithy / repair_furnace -> consumes heatproof_stone x3, grom_hammer x1</code>
+              <p>Action IDs are assigned when created and kept when actions are edited. Item IDs in rewards and consumes must match exactly.</p>
+            </div>
+          </section>
+
+          <section class="guide-section">
+            <h3>4. Set coin payouts</h3>
+            <div>
+              <p>NPC quest coin rewards use one <code>quest_id: amount</code> per line and pay once after all generated steps are completed.</p>
+              <code class="guide-code">fix_the_furnace: 50
+retrieve_mithril_ore: 30</code>
+              <p>For item sales, create a <strong>Sell items for coins</strong> action, specify the consumed item quantities, and set coins earned per use.</p>
+            </div>
+          </section>
+
+          <section class="guide-section">
+            <h3>Common blockers</h3>
+            <div>
+              <ul>
+                <li><strong>Quest ID not available:</strong> add it to that NPC's Quest lines.</li>
+                <li><strong>No world action completes the quest:</strong> create the final Use action and make guidance name it.</li>
+                <li><strong>Required item cannot be gathered:</strong> add a Gather action whose reward item ID exactly matches the Use action's consumed ID.</li>
+                <li><strong>Action is impossible in order:</strong> make sure each required Gather action comes before the Use action, and configure sufficient quantities.</li>
+                <li><strong>Reward does not pay:</strong> confirm the quest reward uses the exact quest ID and a non-negative coin amount.</li>
+              </ul>
+              <div class="guide-note">When a conversation cannot generate a valid quest from the current world, the Troubleshooting panel names the missing action or item and suggests what to add.</div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <section id="troubleshooting" class="troubleshooting" data-state="idle" aria-labelledby="troubleshooting-title">
+      <div class="troubleshooting-head">
+        <div class="troubleshooting-title-wrap">
+          <span id="troubleshooting-mark" class="troubleshooting-mark" aria-hidden="true">i</span>
+          <div>
+            <h2 id="troubleshooting-title">Troubleshooting</h2>
+            <span id="troubleshooting-code" class="troubleshooting-code">System status</span>
+          </div>
+        </div>
+        <button id="diagnostic-clear" class="diagnostic-clear" type="button">Clear</button>
+      </div>
+      <div class="troubleshooting-body" aria-live="polite">
+        <p id="diagnostic-message" class="diagnostic-idle">No recent issues. Request failures and suggested fixes will appear here.</p>
+        <p id="diagnostic-source" class="diagnostic-source"></p>
+        <ol id="diagnostic-suggestions" class="diagnostic-suggestions"></ol>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const npcTab = document.querySelector("#npc-tab");
+    const worldTab = document.querySelector("#world-tab");
+    const guideTab = document.querySelector("#guide-tab");
+    const npcWorkspace = document.querySelector("#npc-workspace");
+    const worldWorkspace = document.querySelector("#world-workspace");
+    const guideWorkspace = document.querySelector("#guide-workspace");
+    const troubleshooting = document.querySelector("#troubleshooting");
+    const troubleshootingMark = document.querySelector("#troubleshooting-mark");
+    const troubleshootingCode = document.querySelector("#troubleshooting-code");
+    const diagnosticMessage = document.querySelector("#diagnostic-message");
+    const diagnosticSource = document.querySelector("#diagnostic-source");
+    const diagnosticSuggestions = document.querySelector("#diagnostic-suggestions");
+    const diagnosticClear = document.querySelector("#diagnostic-clear");
+    const mapNodes = document.querySelector("#map-nodes");
+    const locationDetail = document.querySelector("#location-detail");
+    const locationForm = document.querySelector("#location-form");
+    const inventoryGrid = document.querySelector("#inventory-grid");
+    const inventoryForm = document.querySelector("#inventory-form");
+    const inventoryNotice = document.querySelector("#inventory-notice");
+    const walletBalance = document.querySelector("#wallet-balance");
+    const locationNotice = document.querySelector("#location-notice");
+    const createForm = document.querySelector("#create-form");
+    const createButton = document.querySelector("#create-button");
+    const cancelEditButton = document.querySelector("#cancel-edit-button");
+    const createNotice = document.querySelector("#create-notice");
+    const npcList = document.querySelector("#npc-list");
+    const npcListStatus = document.querySelector("#npc-list-status");
+    const viewerName = document.querySelector("#viewer-name");
+    const viewerContent = document.querySelector("#viewer-content");
+    const chatPane = document.querySelector("#chat-pane");
+    const chatSubtitle = document.querySelector("#chat-subtitle");
+    const npcTag = document.querySelector("#npc-tag");
+    const relationshipValue = document.querySelector("#relationship-value");
+    const relationshipTrack = document.querySelector("#relationship-track");
+    const relationshipFill = document.querySelector("#relationship-fill");
+    const transcript = document.querySelector("#transcript");
+    const chatForm = document.querySelector("#chat-form");
+    const playerInput = document.querySelector("#player-input");
+    const sendButton = document.querySelector("#send-button");
+    const chatStatus = document.querySelector("#chat-status");
+    let activeNpcId = null;
+    let activeNpcName = null;
+    let activeRelationshipScore = 50;
+    let selectionToken = 0;
+    let worldLocations = [];
+    let selectedLocationId = null;
+    let editingNpcId = null;
+
+    function splitList(value) {
+      return value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
+    }
+
+    function parseQuestGuidance(value) {
+      const guidance = {};
+      for (const line of value.split("\n")) {
+        const separator = line.indexOf(":");
+        if (separator < 1) continue;
+        const questId = line.slice(0, separator).trim();
+        const description = line.slice(separator + 1).trim();
+        if (questId && description) guidance[questId] = description;
+      }
+      return guidance;
+    }
+
+    function parseQuestRewards(value) {
+      const rewards = {};
+      for (const line of value.split("\n")) {
+        const separator = line.indexOf(":");
+        if (separator < 1) continue;
+        const questId = line.slice(0, separator).trim();
+        const amount = Number(line.slice(separator + 1).trim());
+        if (questId && Number.isInteger(amount) && amount >= 0) rewards[questId] = amount;
+      }
+      return rewards;
+    }
+
+    function setNotice(element, message, kind = "") {
+      element.textContent = message;
+      element.dataset.kind = kind;
+    }
+
+    function showTroubleshooting(report, source) {
+      let details = typeof report === "string"
+        ? { code: "request_failed", message: report, suggestions: [] }
+        : report;
+      if (typeof report === "string" && report.includes("Not enough inventory")) {
+        const requirements = report.match(/\((.*)\)/)?.[1] || "the listed required items";
+        details = {
+          code: "missing_inventory",
+          message: report,
+          suggestions: [
+            `Gather these required resources before repeating the action: ${requirements}.`,
+            "Open World & Inventory and use a gather action that awards each required item ID.",
+            "Check the Inventory panel to confirm the needed quantities are present.",
+          ],
+        };
+      }
+      troubleshooting.dataset.state = "error";
+      troubleshootingMark.textContent = "!";
+      troubleshootingCode.textContent = `${source} / ${details.code || "request_failed"}`;
+      diagnosticMessage.className = "diagnostic-message";
+      diagnosticMessage.textContent = details.message || "The request failed without a diagnostic message.";
+      diagnosticSource.textContent = new Date().toLocaleTimeString();
+      diagnosticSuggestions.replaceChildren();
+      for (const suggestion of details.suggestions || []) {
+        const item = document.createElement("li");
+        item.textContent = suggestion;
+        diagnosticSuggestions.append(item);
+      }
+      troubleshooting.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function captureTroubleshooting(error, source) {
+      if (source !== "Open NPC conversation" && source !== "NPC conversation") return;
+      if (error?.report) {
+        showTroubleshooting(error.report, source);
+        return;
+      }
+      showTroubleshooting({
+        code: "request_failed",
+        message: error?.message || "The request could not be completed.",
+        suggestions: [
+          "Check that the API server is still running.",
+          "If this happened during dialogue, verify Ollama is running and the configured model is installed.",
+        ],
+      }, source);
+    }
+
+    function clearTroubleshooting() {
+      troubleshooting.dataset.state = "idle";
+      troubleshootingMark.textContent = "i";
+      troubleshootingCode.textContent = "System status";
+      diagnosticMessage.className = "diagnostic-idle";
+      diagnosticMessage.textContent = "No recent issues. Request failures and suggested fixes will appear here.";
+      diagnosticSource.textContent = "";
+      diagnosticSuggestions.replaceChildren();
+    }
+
+    diagnosticClear.addEventListener("click", clearTroubleshooting);
+
+    function showWorkspace(name) {
+      const workspaceByName = {
+        npc: npcWorkspace,
+        world: worldWorkspace,
+        guide: guideWorkspace,
+      };
+      for (const [workspaceName, workspace] of Object.entries(workspaceByName)) {
+        const selected = workspaceName === name;
+        workspace.hidden = !selected;
+        document.querySelector(`#${workspaceName}-tab`).setAttribute("aria-selected", String(selected));
+      }
+    }
+
+    async function readResponse(response) {
+      const result = await response.json();
+      if (!response.ok) {
+        const detail = result.detail || "The request could not be completed.";
+        const message = typeof detail === "string" ? detail : detail.message;
+        const error = new Error(message || "The request could not be completed.");
+        error.report = detail;
+        throw error;
+      }
+      return result;
+    }
+
+    function locationSymbol(location) {
+      const text = `${location.name} ${location.description}`.toLowerCase();
+      if (text.includes("mine") || text.includes("cave")) return "M";
+      if (text.includes("tower") || text.includes("fort")) return "T";
+      if (text.includes("smith") || text.includes("forge")) return "F";
+      return "L";
+    }
+
+    function renderMapNodes() {
+      mapNodes.replaceChildren();
+      for (const [index, location] of worldLocations.entries()) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "map-node";
+        button.setAttribute("role", "listitem");
+        button.setAttribute("aria-pressed", String(location.location_id === selectedLocationId));
+        const icon = document.createElement("span");
+        icon.className = "map-node-icon";
+        icon.textContent = locationSymbol(location);
+        const info = document.createElement("span");
+        const title = document.createElement("strong");
+        title.textContent = location.name;
+        const subtitle = document.createElement("small");
+        subtitle.textContent = `${location.actions.length} ${location.actions.length === 1 ? "action" : "actions"}`;
+        info.append(title, subtitle);
+        const indexLabel = document.createElement("span");
+        indexLabel.className = "map-node-index";
+        indexLabel.textContent = String(index + 1).padStart(2, "0");
+        button.append(icon, info, indexLabel);
+        button.addEventListener("click", () => selectLocation(location.location_id));
+        mapNodes.append(button);
+      }
+      if (worldLocations.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "roster-empty";
+        empty.textContent = "No locations yet. Add one to begin mapping the world.";
+        mapNodes.append(empty);
+      }
+    }
+
+    function renderWorldAction(action) {
+      const card = document.createElement("article");
+      card.className = "world-action";
+      const info = document.createElement("div");
+      const type = document.createElement("span");
+      type.className = "mode-label";
+      type.textContent = action.mode === "gather" ? "Gather item" : action.mode === "sell" ? "Sell items" : "Use action";
+      const title = document.createElement("h4");
+      title.textContent = action.name;
+      const description = document.createElement("p");
+      description.textContent = action.description;
+      info.append(type, title, description);
+
+      const details = [];
+      if (action.reward_item_id) {
+        details.push(`Yields ${action.reward_quantity} ${action.reward_item_name} (${action.reward_item_id})`);
+      }
+      const ingredients = Object.entries(action.consumes);
+      if (ingredients.length) details.push(`Consumes ${ingredients.map(([item, quantity]) => `${item} x${quantity}`).join(", ")}`);
+      if (action.money_reward) details.push(`Pays ${action.money_reward} coins`);
+      if (details.length) {
+        const meta = document.createElement("div");
+        meta.className = "world-action-meta";
+        meta.textContent = details.join(" · ");
+        info.append(meta);
+      }
+
+      const controls = document.createElement("div");
+      controls.className = "world-action-controls";
+      const perform = document.createElement("button");
+      perform.type = "button";
+      perform.className = "primary-button";
+      perform.textContent = action.mode === "gather" ? "Gather" : "Perform";
+      perform.addEventListener("click", () => performWorldAction(action.action_id, perform));
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "edit-button";
+      edit.textContent = "Edit";
+      edit.addEventListener("click", () => toggleActionEditor(card, action));
+      controls.append(perform, edit);
+      card.append(info, controls);
+      return card;
+    }
+
+    function toggleActionEditor(card, action) {
+      const existing = card.querySelector(".world-action-editor");
+      if (existing) {
+        existing.remove();
+        return;
+      }
+
+      const form = document.createElement("form");
+      form.className = "compact-form world-action-editor";
+      form.innerHTML = `
+        <label class="field"><span class="field-label">Action name</span><input name="name" required maxlength="100"></label>
+        <label class="field"><span class="field-label">What happens</span><textarea name="description" required maxlength="300"></textarea></label>
+        <label class="field"><span class="field-label">Action type</span><select name="mode"><option value="gather">Gather an item</option><option value="use">Use items / perform task</option><option value="sell">Sell items for coins</option></select></label>
+        <div class="action-reward field-grid">
+          <label class="field"><span class="field-label">Reward item ID</span><input name="reward_item_id"></label>
+          <label class="field"><span class="field-label">Reward display name</span><input name="reward_item_name"></label>
+          <label class="field"><span class="field-label">Quantity per use</span><input name="reward_quantity" type="number" min="1" max="999"></label>
+        </div>
+        <label class="field action-consumes" hidden><span class="field-label">Items consumed (item_id:quantity)</span><input name="consumes" placeholder="copper_ore:2, hammer:1"></label>
+        <label class="field action-money" hidden><span class="field-label">Coins earned per use</span><input name="money_reward" type="number" min="1" max="1000000" value="1"></label>
+        <div class="world-action-controls">
+          <button class="primary-button" type="submit">Save changes</button>
+          <button class="edit-button editor-cancel" type="button">Cancel</button>
+        </div>
+        <p class="notice" role="status" aria-live="polite"></p>`;
+      const fields = form.elements;
+      fields.namedItem("name").value = action.name;
+      fields.namedItem("description").value = action.description;
+      fields.namedItem("mode").value = action.mode;
+      fields.namedItem("reward_item_id").value = action.reward_item_id || "";
+      fields.namedItem("reward_item_name").value = action.reward_item_name || "";
+      fields.namedItem("reward_quantity").value = action.reward_quantity;
+      fields.namedItem("money_reward").value = action.money_reward || 1;
+      fields.namedItem("consumes").value = Object.entries(action.consumes)
+        .map(([itemId, quantity]) => `${itemId}:${quantity}`)
+        .join(", ");
+
+      const rewardFields = form.querySelector(".action-reward");
+      const consumesField = form.querySelector(".action-consumes");
+      const moneyField = form.querySelector(".action-money");
+      const updateMode = () => {
+        rewardFields.hidden = fields.namedItem("mode").value !== "gather";
+        consumesField.hidden = fields.namedItem("mode").value === "gather";
+        moneyField.hidden = fields.namedItem("mode").value !== "sell";
+      };
+      fields.namedItem("mode").addEventListener("change", updateMode);
+      updateMode();
+      form.querySelector(".editor-cancel").addEventListener("click", () => form.remove());
+      form.addEventListener("submit", (event) => updateWorldAction(event, action, form));
+      card.append(form);
+    }
+
+    function renderLocation(location) {
+      locationDetail.replaceChildren();
+      const hero = document.createElement("div");
+      hero.className = "location-hero";
+      const thumbnail = document.createElement("div");
+      thumbnail.className = "location-thumbnail";
+      if (location.thumbnail_url) {
+        const image = document.createElement("img");
+        image.src = location.thumbnail_url;
+        image.alt = `${location.name} location thumbnail`;
+        image.loading = "lazy";
+        image.addEventListener("error", () => {
+          thumbnail.replaceChildren();
+          const fallback = document.createElement("span");
+          fallback.textContent = locationSymbol(location);
+          thumbnail.append(fallback);
+        }, { once: true });
+        thumbnail.append(image);
+      } else {
+        const symbol = document.createElement("span");
+        symbol.textContent = locationSymbol(location);
+        thumbnail.append(symbol);
+      }
+      const copy = document.createElement("div");
+      const titleRow = document.createElement("div");
+      titleRow.className = "location-title-row";
+      const title = document.createElement("h3");
+      title.className = "location-title";
+      title.textContent = location.name;
+      const editLocation = document.createElement("button");
+      editLocation.type = "button";
+      editLocation.className = "edit-button";
+      editLocation.textContent = "Edit";
+      editLocation.addEventListener("click", () => toggleLocationEditor(location, hero));
+      const description = document.createElement("p");
+      description.className = "location-description";
+      description.textContent = location.description;
+      const id = document.createElement("span");
+      id.className = "location-id";
+      id.textContent = location.location_id;
+      titleRow.append(title, editLocation);
+      copy.append(titleRow, description, id);
+      hero.append(thumbnail, copy);
+      locationDetail.append(hero);
+
+      const locationEditor = document.createElement("form");
+      locationEditor.className = "compact-form location-editor";
+      locationEditor.hidden = true;
+      locationEditor.innerHTML = `
+        <label class="field"><span class="field-label">Location name</span><input name="name" required maxlength="100"></label>
+        <label class="field"><span class="field-label">Description</span><textarea name="description" required maxlength="500"></textarea></label>
+        <label class="field"><span class="field-label">Thumbnail image URL</span><input name="thumbnail_url" type="url" placeholder="https://... (optional)"></label>
+        <div class="world-action-controls">
+          <button class="primary-button" type="submit">Save changes</button>
+          <button class="edit-button editor-cancel" type="button">Cancel</button>
+        </div>
+        <p class="notice" role="status" aria-live="polite"></p>`;
+      locationEditor.elements.namedItem("name").value = location.name;
+      locationEditor.elements.namedItem("description").value = location.description;
+      locationEditor.elements.namedItem("thumbnail_url").value = location.thumbnail_url || "";
+      locationEditor.querySelector(".editor-cancel").addEventListener("click", () => {
+        locationEditor.hidden = true;
+      });
+      locationEditor.addEventListener("submit", (event) => updateLocation(event, location, locationEditor));
+      locationDetail.append(locationEditor);
+
+      const heading = document.createElement("h3");
+      heading.className = "world-section-heading";
+      heading.textContent = "Available actions";
+      locationDetail.append(heading);
+      const actions = document.createElement("div");
+      actions.className = "world-actions";
+      if (location.actions.length) {
+        for (const action of location.actions) actions.append(renderWorldAction(action));
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "roster-empty";
+        empty.textContent = "This location has no actions yet. Add one below.";
+        actions.append(empty);
+      }
+      locationDetail.append(actions);
+
+      const details = document.createElement("details");
+      details.className = "add-action-details";
+      const summary = document.createElement("summary");
+      summary.textContent = "Add an action to this location";
+      const form = document.createElement("form");
+      form.className = "compact-form";
+      form.innerHTML = `
+        <label class="field"><span class="field-label">Action name</span><input name="name" required maxlength="100" placeholder="Gather copper ore"></label>
+        <label class="field"><span class="field-label">What happens</span><textarea name="description" required maxlength="300" placeholder="Describe the result of this action"></textarea></label>
+        <label class="field"><span class="field-label">Action type</span><select name="mode"><option value="gather">Gather an item</option><option value="use">Use items / perform task</option><option value="sell">Sell items for coins</option></select></label>
+        <div class="action-reward field-grid">
+          <label class="field"><span class="field-label">Reward item ID</span><input name="reward_item_id" placeholder="copper_ore"></label>
+          <label class="field"><span class="field-label">Reward display name</span><input name="reward_item_name" placeholder="Copper ore"></label>
+          <label class="field"><span class="field-label">Quantity per use</span><input name="reward_quantity" type="number" min="1" max="999" value="1"></label>
+        </div>
+        <label class="field action-consumes" hidden><span class="field-label">Items consumed (item_id:quantity)</span><input name="consumes" placeholder="copper_ore:2, hammer:1"></label>
+        <label class="field action-money" hidden><span class="field-label">Coins earned per use</span><input name="money_reward" type="number" min="1" max="1000000" value="1"></label>
+        <button class="primary-button" type="submit">Save action</button>
+        <p class="notice" role="status" aria-live="polite"></p>`;
+      const modeInput = form.elements.namedItem("mode");
+      const rewardFields = form.querySelector(".action-reward");
+      const consumesField = form.querySelector(".action-consumes");
+      const moneyField = form.querySelector(".action-money");
+      modeInput.addEventListener("change", () => {
+        rewardFields.hidden = modeInput.value !== "gather";
+        consumesField.hidden = modeInput.value === "gather";
+        moneyField.hidden = modeInput.value !== "sell";
+      });
+      form.addEventListener("submit", (event) => createWorldAction(event, location.location_id, form));
+      details.append(summary, form);
+      locationDetail.append(details);
+    }
+
+    function toggleLocationEditor(location, hero) {
+      const editor = hero.nextElementSibling;
+      if (editor?.classList.contains("location-editor")) editor.hidden = !editor.hidden;
+    }
+
+    async function refreshWorld(preferredLocationId = selectedLocationId) {
+      try {
+        worldLocations = await readResponse(await fetch("/world"));
+        renderMapNodes();
+        const selected = worldLocations.find((location) => location.location_id === preferredLocationId)
+          || worldLocations[0];
+        if (selected) selectLocation(selected.location_id, false);
+        else {
+          selectedLocationId = null;
+          locationDetail.replaceChildren();
+          const empty = document.createElement("div");
+          empty.className = "viewer-empty";
+          empty.textContent = "Add a location to start building the world map.";
+          locationDetail.append(empty);
+        }
+      } catch (error) {
+        captureTroubleshooting(error, "World map");
+        setNotice(locationNotice, error.message, "error");
+      }
+    }
+
+    function selectLocation(locationId, rerenderMap = true) {
+      selectedLocationId = locationId;
+      const location = worldLocations.find((item) => item.location_id === locationId);
+      if (!location) return;
+      if (rerenderMap) renderMapNodes();
+      renderLocation(location);
+    }
+
+    function parseItemAmounts(value) {
+      const amounts = {};
+      for (const entry of value.split(",")) {
+        const [rawId, rawQuantity] = entry.trim().split(":");
+        if (!rawId) continue;
+        const quantity = Number(rawQuantity || 1);
+        if (!Number.isInteger(quantity) || quantity < 1) throw new Error(`Invalid quantity for ${rawId}.`);
+        amounts[rawId.trim()] = quantity;
+      }
+      return amounts;
+    }
+
+    async function createWorldAction(event, locationId, form) {
+      event.preventDefault();
+      const fields = new FormData(form);
+      const mode = fields.get("mode");
+      const request = {
+        name: fields.get("name").trim(),
+        description: fields.get("description").trim(),
+        mode,
+        reward_item_id: mode === "gather" ? fields.get("reward_item_id").trim() : null,
+        reward_item_name: mode === "gather" ? fields.get("reward_item_name").trim() : null,
+        reward_quantity: Number(fields.get("reward_quantity")) || 1,
+        consumes: mode !== "gather" ? parseItemAmounts(fields.get("consumes")) : {},
+        money_reward: mode === "sell" ? Number(fields.get("money_reward")) || 0 : 0,
+      };
+      const button = form.querySelector("button[type=submit]");
+      const notice = form.querySelector(".notice");
+      button.disabled = true;
+      setNotice(notice, "Saving action...");
+      try {
+        await readResponse(await fetch(`/world/locations/${encodeURIComponent(locationId)}/actions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        }));
+        await refreshWorld(locationId);
+        setNotice(locationNotice, "Location action added.", "success");
+      } catch (error) {
+        captureTroubleshooting(error, "World action");
+        setNotice(notice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateLocation(event, location, form) {
+      event.preventDefault();
+      const fields = new FormData(form);
+      const button = form.querySelector('button[type="submit"]');
+      const notice = form.querySelector(".notice");
+      button.disabled = true;
+      setNotice(notice, "Saving location...");
+      try {
+        await readResponse(await fetch(`/world/locations/${encodeURIComponent(location.location_id)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: fields.get("name").trim(),
+            description: fields.get("description").trim(),
+            thumbnail_url: fields.get("thumbnail_url").trim() || null,
+          }),
+        }));
+        await refreshWorld(location.location_id);
+        setNotice(locationNotice, `${fields.get("name").trim()} updated.`, "success");
+      } catch (error) {
+        setNotice(notice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateWorldAction(event, action, form) {
+      event.preventDefault();
+      const fields = new FormData(form);
+      const mode = fields.get("mode");
+      const request = {
+        name: fields.get("name").trim(),
+        description: fields.get("description").trim(),
+        mode,
+        reward_item_id: mode === "gather" ? fields.get("reward_item_id").trim() : null,
+        reward_item_name: mode === "gather" ? fields.get("reward_item_name").trim() : null,
+        reward_quantity: Number(fields.get("reward_quantity")) || 1,
+        consumes: mode !== "gather" ? parseItemAmounts(fields.get("consumes")) : {},
+        money_reward: mode === "sell" ? Number(fields.get("money_reward")) || 0 : 0,
+      };
+      const button = form.querySelector('button[type="submit"]');
+      const notice = form.querySelector(".notice");
+      button.disabled = true;
+      setNotice(notice, "Saving action...");
+      try {
+        await readResponse(await fetch(
+          `/world/locations/${encodeURIComponent(action.location_id)}/actions/${encodeURIComponent(action.action_id)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+          },
+        ));
+        await refreshWorld(action.location_id);
+        setNotice(locationNotice, `${request.name} updated.`, "success");
+      } catch (error) {
+        setNotice(notice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function performWorldAction(actionId, button) {
+      button.disabled = true;
+      setNotice(inventoryNotice, "Performing world action...");
+      try {
+        const result = await readResponse(await fetch(`/world/actions/${encodeURIComponent(actionId)}/perform`, {
+          method: "POST",
+        }));
+        await refreshWorld(result.location.location_id);
+        await refreshInventory();
+        await refreshNpcList();
+        if (activeNpcId) {
+          const response = await fetch(`/npcs/${encodeURIComponent(activeNpcId)}`);
+          if (response.ok) renderNpcDetails(await response.json());
+        }
+        const earnings = result.money_earned ? ` Wallet +${result.money_earned} coins.` : "";
+        setNotice(inventoryNotice, `${result.action.name} completed. Inventory and quest progress updated.${earnings}`, "success");
+      } catch (error) {
+        captureTroubleshooting(error, "World action");
+        setNotice(inventoryNotice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function refreshInventory() {
+      try {
+        const items = await readResponse(await fetch("/inventory"));
+        const wallet = await readResponse(await fetch("/wallet"));
+        walletBalance.textContent = `${wallet.balance.toLocaleString()} ${wallet.balance === 1 ? "coin" : "coins"}`;
+        inventoryGrid.replaceChildren();
+        if (items.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "inventory-empty";
+          empty.textContent = "Inventory is empty. Gather resources at a location or add a collected item.";
+          inventoryGrid.append(empty);
+          return;
+        }
+        for (const item of items) {
+          const row = document.createElement("div");
+          row.className = "inventory-item";
+          row.setAttribute("role", "listitem");
+          const name = document.createElement("strong");
+          name.textContent = item.name;
+          const quantity = document.createElement("span");
+          quantity.textContent = `x${item.quantity}`;
+          row.append(name, quantity);
+          inventoryGrid.append(row);
+        }
+      } catch (error) {
+        captureTroubleshooting(error, "Inventory");
+        setNotice(inventoryNotice, error.message, "error");
+      }
+    }
+
+    function updateRelationshipScore(score) {
+      activeRelationshipScore = Math.max(0, Math.min(100, score));
+      relationshipValue.textContent = `${activeRelationshipScore} / 100`;
+      relationshipTrack.setAttribute("aria-valuenow", String(activeRelationshipScore));
+      relationshipFill.style.width = `${activeRelationshipScore}%`;
+      relationshipFill.dataset.tone = activeRelationshipScore < 30 ? "low" : activeRelationshipScore > 70 ? "high" : "";
+    }
+
+    function addViewerFact(container, label, value, wide = false) {
+      const fact = document.createElement("div");
+      fact.className = `viewer-fact${wide ? " wide" : ""}`;
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const description = document.createElement("dd");
+      description.textContent = value || "Not specified";
+      fact.append(term, description);
+      container.append(fact);
+    }
+
+    function renderQuestList(title, quests, triggeredSet = null) {
+      const section = document.createElement("section");
+      section.className = "viewer-subsection";
+      const heading = document.createElement("h4");
+      heading.textContent = title;
+      section.append(heading);
+      if (quests.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "viewer-empty";
+        empty.textContent = "None";
+        section.append(empty);
+        return section;
+      }
+
+      const list = document.createElement("ul");
+      list.className = "viewer-quest-list";
+      for (const quest of quests) {
+        const item = document.createElement("li");
+        const questName = document.createElement("span");
+        questName.textContent = quest;
+        item.append(questName);
+        if (triggeredSet) {
+          const status = document.createElement("span");
+          const isTriggered = triggeredSet.has(quest);
+          status.className = `quest-state${isTriggered ? " triggered" : ""}`;
+          status.textContent = isTriggered ? "Triggered" : "Available";
+          item.append(status);
+        }
+        list.append(item);
+      }
+      section.append(list);
+      return section;
+    }
+
+    function renderQuestPlans(questPlans) {
+      const section = document.createElement("section");
+      section.className = "viewer-subsection";
+      const heading = document.createElement("h4");
+      heading.textContent = "Generated requirements";
+      section.append(heading);
+      const questIds = Object.keys(questPlans);
+      if (questIds.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "viewer-empty";
+        empty.textContent = "Quest steps will appear here when a quest is triggered.";
+        section.append(empty);
+        return section;
+      }
+
+      for (const questId of questIds) {
+        const plan = document.createElement("div");
+        plan.className = "quest-plan";
+        const title = document.createElement("p");
+        title.className = "quest-plan-title";
+        title.textContent = questId;
+        const steps = document.createElement("ol");
+        steps.className = "quest-steps";
+        for (const [index, step] of questPlans[questId].entries()) {
+          const item = document.createElement("li");
+          item.className = "quest-step";
+          const number = document.createElement("span");
+          number.className = "quest-step-number";
+          number.textContent = String(index + 1).padStart(2, "0");
+          const content = document.createElement("span");
+          const stepTitle = document.createElement("strong");
+          stepTitle.textContent = step.title;
+          const description = document.createElement("span");
+          description.className = "quest-step-description";
+          description.textContent = step.description;
+          const status = document.createElement("span");
+          status.className = "quest-step-pending";
+          status.textContent = step.completed ? "Completed" : step.objective_type === "collect_item"
+            ? `Pending · ${step.progress}/${step.quantity}`
+            : "Pending · action required";
+          const worldAction = document.createElement("span");
+          worldAction.className = "quest-step-world";
+          worldAction.textContent = `${step.location_name} / ${step.action_id}`;
+          content.append(stepTitle, description, worldAction, status);
+          item.append(number, content);
+          steps.append(item);
+        }
+        plan.append(title, steps);
+        section.append(plan);
+      }
+      return section;
+    }
+
+    function renderNpcDetails(details) {
+      const profile = details.profile;
+      viewerName.textContent = profile.name;
+      viewerContent.className = "";
+      viewerContent.replaceChildren();
+
+      const facts = document.createElement("dl");
+      facts.className = "viewer-facts";
+      addViewerFact(facts, "Job", profile.job);
+      addViewerFact(facts, "Age", String(profile.age));
+      addViewerFact(facts, "Gender", profile.gender);
+      addViewerFact(facts, "Relationship", `${details.relationship_score} / 100`);
+      addViewerFact(facts, "Attitude", profile.attitude, true);
+      addViewerFact(facts, "Likes", profile.likes.join(", "));
+      addViewerFact(facts, "Dislikes", profile.dislikes.join(", "));
+      addViewerFact(facts, "Backstory", profile.backstory, true);
+      addViewerFact(facts, "Conversation turns", String(details.conversation_turns));
+      const guidance = Object.entries(profile.quest_guidance)
+        .map(([questId, note]) => `${questId}: ${note}`)
+        .join("\n");
+      if (guidance) addViewerFact(facts, "Quest design guidance", guidance, true);
+      const questRewards = Object.entries(details.quest_rewards || {})
+        .filter(([, amount]) => amount > 0)
+        .map(([questId, amount]) => `${questId}: ${amount} coins`)
+        .join("\n");
+      if (questRewards) addViewerFact(facts, "Quest coin rewards", questRewards, true);
+      viewerContent.append(facts);
+
+      const triggered = new Set(details.triggered_quests);
+      viewerContent.append(renderQuestList("Quest lines", details.available_quests, triggered));
+      viewerContent.append(renderQuestList("Triggered quests", details.triggered_quests));
+      viewerContent.append(renderQuestPlans(details.quest_requirements));
+    }
+
+    function clearNpcDetails() {
+      viewerName.textContent = "Choose an NPC";
+      viewerContent.className = "viewer-empty";
+      viewerContent.textContent = "Select a character from the roster to inspect its profile and quests.";
+    }
+
+    function showEmptyConversation(title, detail) {
+      transcript.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      const mark = document.createElement("div");
+      mark.className = "empty-mark";
+      mark.setAttribute("aria-hidden", "true");
+      mark.textContent = "N";
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      const description = document.createElement("span");
+      description.textContent = detail;
+      empty.append(mark, heading, description);
+      transcript.append(empty);
+    }
+
+    async function refreshNpcList() {
+      setNotice(npcListStatus, "Loading NPCs...");
+      try {
+        const response = await fetch("/npcs");
+        const npcs = await response.json();
+        if (!response.ok) throw new Error(npcs.detail || "Could not load NPCs.");
+
+        npcList.replaceChildren();
+        if (npcs.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "roster-empty";
+          empty.textContent = "No NPCs yet. Create a character to start a conversation.";
+          npcList.append(empty);
+        }
+
+        for (const npc of npcs) {
+          const row = document.createElement("div");
+          row.className = "npc-row";
+          row.setAttribute("role", "listitem");
+
+          const select = document.createElement("button");
+          select.type = "button";
+          select.className = "npc-select";
+          select.setAttribute("aria-pressed", String(npc.npc_id === activeNpcId));
+          const name = document.createElement("strong");
+          name.textContent = npc.name;
+          const job = document.createElement("small");
+          job.textContent = `${npc.job} · ${npc.relationship_score}/100`;
+          select.append(name, job);
+          select.addEventListener("click", () => selectNpc(npc.npc_id));
+
+          const edit = document.createElement("button");
+          edit.type = "button";
+          edit.className = "edit-button npc-edit";
+          edit.textContent = "Edit";
+          edit.setAttribute("aria-label", `Edit ${npc.name}`);
+          edit.addEventListener("click", () => beginNpcEdit(npc.npc_id));
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "npc-delete";
+          remove.textContent = "Delete";
+          remove.setAttribute("aria-label", `Delete ${npc.name}`);
+          remove.addEventListener("click", () => deleteNpc(npc));
+
+          row.append(select, edit, remove);
+          npcList.append(row);
+        }
+        setNotice(npcListStatus, `${npcs.length} ${npcs.length === 1 ? "NPC" : "NPCs"}`);
+      } catch (error) {
+        captureTroubleshooting(error, "NPC roster");
+        setNotice(npcListStatus, error.message, "error");
+      }
+    }
+
+    async function beginNpcEdit(npcId) {
+      try {
+        const details = await readResponse(await fetch(`/npcs/${encodeURIComponent(npcId)}`));
+        const profile = details.profile;
+        const fields = createForm.elements;
+        fields.namedItem("name").value = profile.name;
+        fields.namedItem("age").value = profile.age;
+        fields.namedItem("gender").value = profile.gender;
+        fields.namedItem("job").value = profile.job;
+        fields.namedItem("attitude").value = profile.attitude;
+        fields.namedItem("likes").value = profile.likes.join(", ");
+        fields.namedItem("dislikes").value = profile.dislikes.join(", ");
+        fields.namedItem("quest_lines").value = profile.quest_lines.join(", ");
+        fields.namedItem("quest_guidance").value = Object.entries(profile.quest_guidance || {})
+          .map(([questId, guidance]) => `${questId}: ${guidance}`)
+          .join("\n");
+        fields.namedItem("quest_rewards").value = Object.entries(profile.quest_rewards || {})
+          .map(([questId, amount]) => `${questId}: ${amount}`)
+          .join("\n");
+        fields.namedItem("backstory").value = profile.backstory;
+        editingNpcId = npcId;
+        document.querySelector("#create-title").textContent = `Edit ${profile.name}`;
+        createButton.firstChild.textContent = "Save NPC changes ";
+        cancelEditButton.hidden = false;
+        setNotice(createNotice, `Editing ${profile.name}. Existing conversation and quest progress will be kept.`);
+        showWorkspace("npc");
+        createForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        setNotice(npcListStatus, error.message, "error");
+      }
+    }
+
+    function cancelNpcEdit() {
+      editingNpcId = null;
+      createForm.reset();
+      document.querySelector("#create-title").textContent = "Create NPC";
+      createButton.firstChild.textContent = "Create NPC ";
+      cancelEditButton.hidden = true;
+      setNotice(createNotice, "");
+    }
+
+    async function selectNpc(npcId) {
+      const token = ++selectionToken;
+      setNotice(chatStatus, "Opening recent conversation...");
+      try {
+        const [conversationResponse, detailsResponse] = await Promise.all([
+          fetch(`/npcs/${encodeURIComponent(npcId)}/conversation`),
+          fetch(`/npcs/${encodeURIComponent(npcId)}`),
+        ]);
+        const conversation = await conversationResponse.json();
+        const details = await detailsResponse.json();
+        if (!conversationResponse.ok) throw new Error(conversation.detail || "Could not open conversation.");
+        if (!detailsResponse.ok) throw new Error(details.detail || "Could not load NPC details.");
+        if (token !== selectionToken) return;
+
+        activeNpcId = conversation.npc_id;
+        activeNpcName = conversation.name;
+        updateRelationshipScore(conversation.relationship_score);
+        renderNpcDetails(details);
+        npcTag.textContent = `${conversation.name} / ${conversation.npc_id}`;
+        npcTag.hidden = false;
+        chatSubtitle.textContent = "Recent turns are restored; context applies to your next line.";
+        chatPane.classList.remove("locked");
+        playerInput.disabled = false;
+        sendButton.disabled = false;
+        if (conversation.turns.length === 0) {
+          showEmptyConversation("No conversation yet", "Send a line to start talking with this character.");
+        } else {
+          transcript.replaceChildren();
+          for (const turn of conversation.turns) {
+            addMessage("player", turn.player_input);
+            addMessage("npc", turn.response.dialogue, {
+              emotion: turn.response.emotion,
+              quest: turn.response.quest_triggered,
+              delta: turn.response.relationship_delta,
+              requirements: turn.response.quest_requirements,
+            });
+          }
+        }
+        await refreshNpcList();
+        setNotice(chatStatus, conversation.turns.length ? "Recent conversation restored." : "Ready for the first line.");
+      } catch (error) {
+        if (token === selectionToken) {
+          captureTroubleshooting(error, "Open NPC conversation");
+          setNotice(chatStatus, error.message, "error");
+        }
+      }
+    }
+
+    function clearSelectedNpc() {
+      selectionToken += 1;
+      activeNpcId = null;
+      activeNpcName = null;
+      updateRelationshipScore(50);
+      clearNpcDetails();
+      npcTag.hidden = true;
+      chatPane.classList.add("locked");
+      chatSubtitle.textContent = "Select an NPC from the roster or create a new one.";
+      playerInput.disabled = true;
+      sendButton.disabled = true;
+      showEmptyConversation("No NPC selected", "Choose a character from the roster to open its conversation.");
+      setNotice(chatStatus, "");
+    }
+
+    async function deleteNpc(npc) {
+      if (!window.confirm(`Delete ${npc.name} and its recent conversation?`)) return;
+      try {
+        const response = await fetch(`/npcs/${encodeURIComponent(npc.npc_id)}`, { method: "DELETE" });
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.detail || "Could not delete NPC.");
+        }
+        if (activeNpcId === npc.npc_id) clearSelectedNpc();
+        await refreshNpcList();
+        setNotice(npcListStatus, `${npc.name} deleted.`, "success");
+      } catch (error) {
+        captureTroubleshooting(error, "Delete NPC");
+        setNotice(npcListStatus, error.message, "error");
+      }
+    }
+
+    function addMessage(role, text, metadata = {}) {
+      if (transcript.querySelector(".empty-state")) transcript.replaceChildren();
+      const message = document.createElement("article");
+      message.className = `message ${role}`;
+
+      const label = document.createElement("div");
+      label.className = "message-label";
+      label.textContent = role === "player" ? "You" : activeNpcName;
+
+      const bubble = document.createElement("div");
+      bubble.className = "message-bubble";
+      bubble.textContent = text;
+      message.append(label, bubble);
+
+      if (metadata.emotion || metadata.quest || Number.isInteger(metadata.delta)) {
+        const meta = document.createElement("div");
+        meta.className = "message-meta";
+        if (metadata.emotion) {
+          const emotion = document.createElement("span");
+          emotion.className = "emotion";
+          emotion.textContent = metadata.emotion;
+          meta.append(emotion);
+        }
+        if (Number.isInteger(metadata.delta)) {
+          const change = document.createElement("span");
+          change.textContent = `${metadata.delta > 0 ? "+" : ""}${metadata.delta} relationship`;
+          meta.append(change);
+        }
+        message.append(meta);
+      }
+
+      if (metadata.quest) {
+        const quest = document.createElement("div");
+        quest.className = "quest-event";
+        const title = document.createElement("strong");
+        title.textContent = `Quest started: ${metadata.quest}`;
+        quest.append(title);
+        if (metadata.requirements?.length) {
+          const steps = document.createElement("ol");
+          steps.className = "quest-steps";
+          for (const [index, requirement] of metadata.requirements.entries()) {
+            const item = document.createElement("li");
+            item.className = "quest-step";
+            const number = document.createElement("span");
+            number.className = "quest-step-number";
+            number.textContent = String(index + 1).padStart(2, "0");
+            const content = document.createElement("span");
+            const stepTitle = document.createElement("strong");
+            stepTitle.textContent = requirement.title;
+            const description = document.createElement("span");
+            description.className = "quest-step-description";
+            description.textContent = requirement.description;
+            const action = document.createElement("span");
+            action.className = "quest-step-world";
+            action.textContent = `${requirement.location_name} / ${requirement.action_id}`;
+            content.append(stepTitle, description, action);
+            item.append(number, content);
+            steps.append(item);
+          }
+          quest.append(steps);
+        }
+        message.append(quest);
+      }
+
+      transcript.append(message);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    npcTab.addEventListener("click", () => showWorkspace("npc"));
+    worldTab.addEventListener("click", () => showWorkspace("world"));
+    guideTab.addEventListener("click", () => showWorkspace("guide"));
+    cancelEditButton.addEventListener("click", cancelNpcEdit);
+
+    locationForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fields = new FormData(locationForm);
+      const button = locationForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      setNotice(locationNotice, "Adding location...");
+      try {
+        const location = await readResponse(await fetch("/world/locations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: fields.get("name").trim(),
+            description: fields.get("description").trim(),
+            thumbnail_url: fields.get("thumbnail_url").trim() || null,
+          }),
+        }));
+        locationForm.reset();
+        await refreshWorld(location.location_id);
+        setNotice(locationNotice, `${location.name} added to the map.`, "success");
+      } catch (error) {
+        captureTroubleshooting(error, "Add location");
+        setNotice(locationNotice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    inventoryForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fields = new FormData(inventoryForm);
+      const button = inventoryForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      setNotice(inventoryNotice, "Adding collected item...");
+      try {
+        await readResponse(await fetch("/inventory/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            item_id: fields.get("item_id").trim(),
+            item_name: fields.get("item_name").trim(),
+            quantity: Number(fields.get("quantity")),
+          }),
+        }));
+        const itemId = fields.get("item_id").trim();
+        inventoryForm.reset();
+        await refreshInventory();
+        if (activeNpcId) {
+          const response = await fetch(`/npcs/${encodeURIComponent(activeNpcId)}`);
+          if (response.ok) renderNpcDetails(await response.json());
+        }
+        setNotice(inventoryNotice, `${itemId} added. Matching quest requirements were checked.`, "success");
+      } catch (error) {
+        captureTroubleshooting(error, "Inventory");
+        setNotice(inventoryNotice, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    createForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fields = new FormData(createForm);
+      const profile = {
+        name: fields.get("name").trim(),
+        age: Number(fields.get("age")),
+        gender: fields.get("gender").trim(),
+        job: fields.get("job").trim(),
+        attitude: fields.get("attitude").trim(),
+        likes: splitList(fields.get("likes")),
+        dislikes: splitList(fields.get("dislikes")),
+        quest_lines: splitList(fields.get("quest_lines")),
+        quest_guidance: parseQuestGuidance(fields.get("quest_guidance")),
+        quest_rewards: parseQuestRewards(fields.get("quest_rewards")),
+        backstory: fields.get("backstory").trim(),
+      };
+
+      createButton.disabled = true;
+      const wasEditing = editingNpcId !== null;
+      const npcId = editingNpcId;
+      setNotice(createNotice, wasEditing ? "Saving NPC changes..." : "Creating character...");
+      try {
+        const result = await readResponse(await fetch(
+          wasEditing ? `/npcs/${encodeURIComponent(npcId)}` : "/npcs",
+          {
+            method: wasEditing ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(profile),
+          },
+        ));
+
+        await refreshNpcList();
+        if (wasEditing) {
+          editingNpcId = null;
+          document.querySelector("#create-title").textContent = "Create NPC";
+          createButton.firstChild.textContent = "Create NPC ";
+          cancelEditButton.hidden = true;
+          await selectNpc(npcId);
+          setNotice(createNotice, `${result.name} updated. Conversation and quest progress retained.`, "success");
+        } else {
+          await selectNpc(result.npc_id);
+          setNotice(createNotice, `${result.name} is ready to talk.`, "success");
+        }
+        playerInput.focus();
+      } catch (error) {
+        captureTroubleshooting(error, "Create NPC");
+        setNotice(createNotice, error.message, "error");
+      } finally {
+        createButton.disabled = false;
+      }
+    });
+
+    chatForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const playerLine = playerInput.value.trim();
+      if (!activeNpcId || !playerLine) return;
+
+      const context = {
+        location: document.querySelector("#context-location").value.trim(),
+        current_event: document.querySelector("#context-event").value.trim(),
+        player_relationship: document.querySelector("#context-relationship").value.trim(),
+        active_quest_step: document.querySelector("#context-quest").value.trim() || null,
+      };
+
+      addMessage("player", playerLine);
+      playerInput.value = "";
+      sendButton.disabled = true;
+      setNotice(chatStatus, `${activeNpcName} is thinking...`);
+      try {
+        const result = await readResponse(await fetch(`/npcs/${encodeURIComponent(activeNpcId)}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ player_input: playerLine, context }),
+        }));
+
+        addMessage("npc", result.dialogue, {
+          emotion: result.emotion,
+          quest: result.quest_triggered,
+          delta: result.relationship_delta,
+          requirements: result.quest_requirements,
+        });
+        updateRelationshipScore(result.relationship_score);
+        await refreshNpcList();
+        const detailsResponse = await fetch(`/npcs/${encodeURIComponent(activeNpcId)}`);
+        if (detailsResponse.ok) renderNpcDetails(await detailsResponse.json());
+        setNotice(chatStatus, "Reply received.");
+      } catch (error) {
+        captureTroubleshooting(error, "NPC conversation");
+        setNotice(chatStatus, error.message, "error");
+      } finally {
+        sendButton.disabled = false;
+        playerInput.focus();
+      }
+    });
+
+    playerInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        chatForm.requestSubmit();
+      }
+    });
+
+    refreshNpcList();
+    refreshWorld();
+    refreshInventory();
+  </script>
+</body>
+</html>
